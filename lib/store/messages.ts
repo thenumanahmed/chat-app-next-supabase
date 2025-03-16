@@ -41,7 +41,7 @@ export const useMessages = create<MessageState>()((set) => ({
   optimisticEditMessage: (updatedMessage) =>
     set((state) => ({
       messages: state.messages.map((msg) =>
-        msg.id === updatedMessage.id ? updatedMessage : msg
+        msg.id === updatedMessage.id ? {...msg, ...updatedMessage} : msg
       ),
     })),
 

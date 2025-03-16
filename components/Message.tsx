@@ -23,9 +23,10 @@ const Message = ({ message }: { message: any }) => {
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-1">
                         <h1 className="font-bold">{message.users?.display_name || 'Unknown User'}</h1>
-                    <h1 className="text-sm text-gray-400">
-                        {new Date(message.created_at).toDateString()}
-                    </h1>
+                        <h1 className="text-sm text-gray-400">
+                            {new Date(message.created_at).toDateString()}
+                        </h1>
+                        {message.is_edit && <h1 className="text-sm text-gray-400">(edited)</h1>}
                     </div>
                     {user?.id === message.users?.id && <MessageMenu message={message} />}
                 </div>

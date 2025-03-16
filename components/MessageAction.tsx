@@ -109,7 +109,7 @@ export function EditAlert() {
 
         const { error } = await supabase
             .from('messages')
-            .update({ text })
+            .update({ text, is_edit: true })
             .eq('id', actionMessage.id);
 
         if (error) {
