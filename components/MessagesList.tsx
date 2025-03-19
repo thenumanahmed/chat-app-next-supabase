@@ -12,11 +12,31 @@ const MessagesList = () => {
     const scrollRef = useRef<HTMLDivElement>(null);
     const [userScrolled, setUserScrolled] = useState(false);
     const [notifications, setNotifications] = useState(0);
-    const { messages, addMessage, optimisticDeleteMessage, optimisticEditMessage } = useMessages((state) => state);
+    const [user, setUser] = useState<any>(null);
+
+    const { messages, addMessage, optimisticDeleteMessage, optimisticEditMessage } =
+        useMessages((state) => state);
 
     const supabase = createClient();
 
     useEffect(() => {
+        const getUser = async () => {
+            const { data, error } = await supabase.auth.getUser();
+
+            if (error) {
+                console.error(error);
+                return;
+            }
+            setUser(data.user);
+        };
+
+        getUser();
+    }, []);
+
+
+    useEffect(() => {
+        if (!user) return; // only subscribe to channel when user is loaded
+
         const channel = supabase
             .channel('general_chat_channel')
             .on('postgres_changes', {
@@ -24,7 +44,10 @@ const MessagesList = () => {
                 schema: 'public',
                 table: 'messages'
             }, async (payload) => {
-                console.log('Message received', payload);
+                // console.log('Message received', payload);
+                if (payload.new.send_by === user?.id) {
+                    return;
+                }
                 const { error, data: userData } = await supabase.from('users')
                     .select('*')
                     .eq('id', payload.new.send_by)
@@ -38,7 +61,7 @@ const MessagesList = () => {
                         users: userData,
                     };
 
-                    console.log('User data!', newMessage);
+                    // console.log('User data!', newMessage);
                     addMessage(newMessage as Imessage);
                 }
                 setNotifications((prev) => prev + 1);
@@ -49,34 +72,21 @@ const MessagesList = () => {
             }, async (payload) => {
                 // delete message from state
                 optimisticDeleteMessage(payload.old.id);
-
-                console.log('Message deleted', payload);
+                // console.log('Message deleted', payload);
             }).on('postgres_changes', {
                 event: 'UPDATE',
                 schema: 'public',
                 table: 'messages'
             }, async (payload) => {
                 // update message in state
-                console.log('Message updated', payload);
-                const { error, data: userData } = await supabase.from('users')
-                    .select('*')
-                    .eq('id', payload.new.send_by)
-                    .single();
-                if (error) {
-                    toast.error(error.message);
-                } else {
-                    const updatedMessage = {
-                        ...payload.new,
-                        users: userData,
-                    };
-                    optimisticEditMessage(updatedMessage as Imessage);
-                }
+                optimisticEditMessage(payload.new as Imessage);
+                // console.log('Message updated', payload);
             }).subscribe();
 
         return () => {
             channel.unsubscribe();
         }
-    }, []);
+    }, [user]);
 
     // for scrolling to bottom on new message
     useEffect(() => {
@@ -133,7 +143,6 @@ const MessagesList = () => {
                 </div>
             )}
             <DeleteAlert />
-            <EditAlert />
         </div>
     )
 }
