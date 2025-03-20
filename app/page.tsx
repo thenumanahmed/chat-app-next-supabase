@@ -7,16 +7,16 @@ import ChatMessages from "@/components/ChatMessages";
 import AppIntro from "@/components/AppIntro";
 
 export default async function Home() {
-  const supabase = createServerSideClient();
-  const { data } = await (await supabase).auth.getSession();
+  const supabase = await createServerSideClient();
+  const { data } = await supabase.auth.getUser();
 
   return (
     <>
       <div className="max-w-3xl mx-auto md:py-10 h-screen">
         <div className="h-full border rounded-md flex flex-col relative">
-          <ChatHeader user={data.session?.user} />
+          <ChatHeader user={data.user ? data.user : undefined} />
           {
-            data.session?.user ? (
+            data.user ? (
               <>
                 <ChatMessages />
                 <ChatInput />
@@ -27,7 +27,7 @@ export default async function Home() {
           }
         </div>
       </div>
-      <InitUser user={data.session?.user} />
+      {data.user && <InitUser user={data.user} />}
     </>
   );
 }
