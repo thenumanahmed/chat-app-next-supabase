@@ -1,6 +1,5 @@
 'use client';
 import { createClient } from '@/lib/supabase/client';
-import { Button } from './ui/button';
 import { User } from '@supabase/supabase-js';
 import { useEffect, useState } from 'react';
 
@@ -61,6 +60,8 @@ const ChatHeader = ({ user }: { user: User | undefined }) => {
   return (
     <div className="h-20">
       <div className="border-b p-5 flex justify-between items-center h-full">
+
+        {/* LEFT SIDE */}
         <div>
           <h1 className="text-xl font-bold">Daily Chat</h1>
 
@@ -74,10 +75,38 @@ const ChatHeader = ({ user }: { user: User | undefined }) => {
           )}
         </div>
 
+        {/* RIGHT SIDE */}
         {user ? (
-          <Button onClick={handleLogout}>LogOut</Button>
+          <div className="relative group">
+
+            {/* USER INFO */}
+            <div className="flex items-center gap-2 cursor-pointer">
+              <img
+                src={user.user_metadata.avatar_url}
+                className="h-8 w-8 rounded-full"
+              />
+              <span className="text-sm font-medium max-w-25 truncate">
+                {user.user_metadata.full_name}
+              </span>
+            </div>
+
+            {/* DROPDOWN */}
+            <div className="absolute right-0 mt-2 w-20 border rounded-lg shadow-lg 
+                  opacity-0 invisible group-hover:opacity-100 group-hover:visible 
+                  transition-all duration-200">
+              <button
+                onClick={handleLogout}
+                className="w-full text-left px-4 py-2 hover:bg-gray-900"
+              >
+                Logout
+              </button>
+            </div>
+
+          </div>
         ) : (
-          <Button onClick={handleLoginWithGithub}>Login</Button>
+          <button onClick={handleLoginWithGithub}>
+            Login
+          </button>
         )}
       </div>
     </div>

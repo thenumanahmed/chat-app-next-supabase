@@ -3,19 +3,37 @@
 import { createClient } from "@/lib/supabase/client"
 import { Input } from "./ui/input"
 import { toast } from "sonner";
-import { v4 as uuidv4 } from "uuid";
 import { useUser } from "@/lib/store/user";
 import { Imessage, useMessages } from "@/lib/store/messages";
 import { X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 
 const ChatInput = () => {
     const supabase = createClient();
+    const inputRef = useRef<HTMLInputElement>(null);
+    const [inputValue, setInputValue] = useState('');
     const user = useUser((state) => state.user);
     const { addMessage, actionMessage, actionType, setAction, optimisticEditMessage } = useMessages();
 
     const isEditing = actionType === 'edit';
 
-    const handleEditMessage = async (text:string) => {
+    useEffect(() => {
+        if (isEditing && actionMessage) {
+            const text = actionMessage.text;
+            setInputValue(text);
+
+            requestAnimationFrame(() => {
+                if (inputRef.current) {
+                    inputRef.current.focus();
+
+                    const length = text.length;
+                    inputRef.current.setSelectionRange(length, length);
+                }
+            });
+        }
+    }, [isEditing, actionMessage]);
+
+    const handleEditMessage = async (text: string) => {
         if (!actionMessage || !text.trim()) return;
 
         const updatedMessage = {
@@ -68,18 +86,26 @@ const ChatInput = () => {
                 <div className="text-gray-600 truncate">
                     Editing: {actionMessage?.text}
                 </div>
-                <X onClick={() => setAction(undefined, null)}/>
+                <X onClick={() => setAction(undefined, null)} />
             </div>}
-            <Input placeholder="send message" onKeyDown={(e) => {
-                if (e.key === "Enter" && e.currentTarget.value.trim() !== "") {
-                    if(isEditing){
-                        handleEditMessage(e.currentTarget.value);
-                    }else{
-                        handleSendMessage(e.currentTarget.value);
+            <Input
+                ref={inputRef}
+                value={inputValue}
+                onChange={(e: any) => setInputValue(e.target.value)}
+                placeholder="send message" onKeyDown={(e: any) => {
+                    if (e.key === "Enter" && e.currentTarget.value.trim() !== "") {
+                        if (isEditing) {
+                            handleEditMessage(e.currentTarget.value);
+                        } else {
+                            handleSendMessage(e.currentTarget.value);
+                        }
+                        e.currentTarget.value = '';
+                        setInputValue('');
+                    } else if (isEditing && e.key === "Escape") {
+                        setAction(undefined, null);
+                        setInputValue('');
                     }
-                    e.currentTarget.value = '';
-                }
-            }} />
+                }} />
         </div>
     )
 }
