@@ -2,13 +2,19 @@
 
 import { Imessage, useMessages } from "@/lib/store/messages"
 import Message from "./Message";
-import { DeleteAlert, EditAlert } from "./MessageAction";
+import { DeleteAlert } from "./MessageAction";
 import { createClient } from "@/lib/supabase/client";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { ArrowDown } from "lucide-react";
+import { ArrowDown, Loader2 } from "lucide-react";
 
-const MessagesList = () => {
+type MessagesListProps = {
+    onLoadPrevious: () => void;
+    loadingPrevious: boolean;
+    hasMorePrevious: boolean;
+};
+
+const MessagesList = ({ onLoadPrevious, loadingPrevious, hasMorePrevious }: MessagesListProps) => {
     const scrollRef = useRef<HTMLDivElement>(null);
     const [userScrolled, setUserScrolled] = useState(false);
     const [notifications, setNotifications] = useState(0);
@@ -18,6 +24,25 @@ const MessagesList = () => {
         useMessages((state) => state);
 
     const supabase = createClient();
+
+    const loadingPreviousRef = useRef<boolean>(false);
+    const previousScrollHeightRef = useRef<number>(0);
+
+    useEffect(() => {
+        if (loadingPrevious && !loadingPreviousRef.current) {
+            previousScrollHeightRef.current = scrollRef.current?.scrollHeight ?? 0;
+        }
+
+        if (!loadingPrevious && loadingPreviousRef.current) {
+            const scrollContainer = scrollRef.current;
+            if (scrollContainer) {
+                const newScrollHeight = scrollContainer.scrollHeight;
+                scrollContainer.scrollTop = newScrollHeight - previousScrollHeightRef.current;
+            }
+        }
+
+        loadingPreviousRef.current = loadingPrevious;
+    }, [loadingPrevious]);
 
     useEffect(() => {
         const getUser = async () => {
@@ -44,7 +69,6 @@ const MessagesList = () => {
                 schema: 'public',
                 table: 'messages'
             }, async (payload) => {
-                // console.log('Message received', payload);
                 if (payload.new.send_by === user?.id) {
                     return;
                 }
@@ -60,8 +84,6 @@ const MessagesList = () => {
                         ...payload.new,
                         users: userData,
                     };
-
-                    // console.log('User data!', newMessage);
                     addMessage(newMessage as Imessage);
                 }
                 setNotifications((prev) => prev + 1);
@@ -70,17 +92,13 @@ const MessagesList = () => {
                 schema: 'public',
                 table: 'messages'
             }, async (payload) => {
-                // delete message from state
                 optimisticDeleteMessage(payload.old.id);
-                // console.log('Message deleted', payload);
             }).on('postgres_changes', {
                 event: 'UPDATE',
                 schema: 'public',
                 table: 'messages'
             }, async (payload) => {
-                // update message in state
                 optimisticEditMessage(payload.new as Imessage);
-                // console.log('Message updated', payload);
             }).subscribe();
 
         return () => {
@@ -91,20 +109,27 @@ const MessagesList = () => {
     // for scrolling to bottom on new message
     useEffect(() => {
         const scrollContainer = scrollRef.current;
-        if (scrollContainer && !userScrolled) {
+        if (scrollContainer && !userScrolled && !loadingPrevious) {
             scrollContainer.scrollTop = scrollContainer.scrollHeight;
         }
-    }, [messages]);
+    }, [messages, userScrolled, loadingPrevious]);
 
     const handleOnScroll = () => {
         const scrollContainer = scrollRef.current;
         if (scrollContainer) {
-            const isScroll = scrollContainer.scrollTop < scrollContainer.scrollHeight - scrollContainer.clientHeight - 20;
-            if (!isScroll) {
+            const isAtBottom = scrollContainer.scrollTop >= scrollContainer.scrollHeight - scrollContainer.clientHeight - 20;
+            const isNearTop = scrollContainer.scrollTop <= 80;
+
+            if (isNearTop && hasMorePrevious && !loadingPrevious) {
+                onLoadPrevious();
+            }
+
+            if (isAtBottom) {
                 setNotifications(0);
             }
-            if (isScroll !== userScrolled) {
-                setUserScrolled(isScroll);
+
+            if (userScrolled !== !isAtBottom) {
+                setUserScrolled(!isAtBottom);
             }
         }
     }
@@ -116,30 +141,30 @@ const MessagesList = () => {
     };
 
     return (
-        <div className="flex-1 flex flex-col p-5 h-full overflow-y-auto" ref={scrollRef} onScroll={handleOnScroll}>
-            <div className="flex-1"></div>
-            <div className="space-y-7">
-                {
-                    messages.map((message, index) => {
-                        return <Message key={index} message={message} />
-                    })
-                }
+        <div className="relative flex-1 min-h-0 overflow-hidden flex flex-col">
+            {loadingPrevious && (
+                <div className="absolute top-0 left-0 right-0 z-10 text-center text-sm py-2">
+                    <Loader2 className="animate-spin mx-auto" />
+                </div>
+            )}
+            <div className="flex-1 overflow-y-auto overflow-x-hidden p-5 flex flex-col" ref={scrollRef} onScroll={handleOnScroll}>
+                <div className="space-y-7">
+                    {messages.map((message) => {
+                        return <Message key={message.id} message={message} />
+                    })}
+                </div>
             </div>
             {userScrolled && (
-                <div className="absolute bottom-20 w-full">
+                <div className="absolute bottom-5 left-1/2 -translate-x-1/2 z-20">
                     {notifications > 0 ? (
-                        <div className="mx-auto cursor-pointer bg-red-400 max-w-36 flex
-                        items-center justify-center rounded-full" onClick={scrollDown}>
+                        <div className="cursor-pointer bg-red-400 px-4 h-10 flex items-center justify-center rounded-full text-white shadow-md text-nowrap whitespace-nowrap" onClick={scrollDown}>
                             {notifications} new message{notifications > 1 ? 's' : ''}
                         </div>
-                    ) :
-                        <div className="w-10 h-10 bg-blue-500 rounded-full 
-                        justify-center items-center flex mx-auto border 
-                        cursor-pointer hover:scale-110 transition-all"
-                            onClick={scrollDown}
-                        >
+                    ) : (
+                        <div className="w-10 h-10 bg-blue-500 rounded-full justify-center items-center flex border cursor-pointer hover:scale-110 transition-all text-white shadow-md" onClick={scrollDown}>
                             <ArrowDown />
-                        </div>}
+                        </div>
+                    )}
                 </div>
             )}
             <DeleteAlert />

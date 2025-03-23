@@ -1,60 +1,100 @@
-import { Suspense } from 'react'
+'use client'
+
+import { useEffect, useState } from 'react'
 import MessagesList from './MessagesList'
-import { createServerSideClient } from '@/lib/supabase/server'
-import InitMessages from '@/lib/store/initMessages'
-import type { Tables } from '@/lib/database.types'
-import type { Imessage } from '@/lib/store/messages'
+import { useMessages } from '@/lib/store/messages'
 
-export const ChatMessages = async () => {
-  const supabase = await createServerSideClient();
+const PAGE_SIZE = 20
 
-  const { data: user, error: authError } = await supabase.auth.getUser();
-  if (authError || !user) {
-    return <div>Please log in</div>;
-  }
+const ChatMessages = () => {
+  const [page, setPage] = useState(1)
+  const [totalCount, setTotalCount] = useState(0)
+  const [loading, setLoading] = useState(false)
+  const [loadingOlder, setLoadingOlder] = useState(false)
+  const [hasMore, setHasMore] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [isAuth, setIsAuth] = useState(true)
 
-  const { data: messagesData, error: messagesError } = await supabase
-    .from('messages')
-    .select('*')
-    .order('created_at', { ascending: true });
+  const messages = useMessages((state) => state.messages)
 
-  if (messagesError) {
-    return <div>Error loading messages</div>;
-  }
+  const loadPage = async (pageToLoad: number, isOlderPage = false) => {
+    if (loading || loadingOlder) return
 
-  const sendByIds = Array.from(
-    new Set((messagesData ?? []).map((message) => message.send_by).filter(Boolean))
-  );
-
-  let usersData: Tables<'users'>[] = [];
-  if (sendByIds.length > 0) {
-    const { data, error: usersError } = await supabase
-      .from('users')
-      .select('id, display_name, avatar_url, created_at')
-      .in('id', sendByIds);
-
-    if (usersError) {
-      console.error(usersError);
-      return <div>Error loading users</div>;
+    if (isOlderPage) {
+      setLoadingOlder(true)
+    } else {
+      setLoading(true)
     }
 
-    usersData = data ?? [];
+    setError(null)
+
+    const res = await fetch(`/api/messages?page=${pageToLoad}&pageSize=${PAGE_SIZE}&direction=desc`)
+
+    if (res.status === 401) {
+      setIsAuth(false)
+      setLoading(false)
+      setLoadingOlder(false)
+      return
+    }
+
+    if (!res.ok) {
+      const body = await res.text()
+      setError(`Error loading messages: ${body}`)
+      setLoading(false)
+      setLoadingOlder(false)
+      return
+    }
+
+    const body = await res.json()
+
+    if (body.error) {
+      setError(body.error)
+      setLoading(false)
+      setLoadingOlder(false)
+      return
+    }
+
+    const fetchedMessages = (body.messages ?? []) as any[]
+    const orderedMessages = [...fetchedMessages].reverse()
+
+    if (pageToLoad === 1) {
+      useMessages.getState().setMessages(orderedMessages)
+    } else {
+      useMessages.getState().prependMessages(orderedMessages)
+    }
+
+    setPage(pageToLoad)
+    setTotalCount(body.totalCount ?? 0)
+    setHasMore(fetchedMessages.length === PAGE_SIZE)
+
+    setLoading(false)
+    setLoadingOlder(false)
   }
 
-  const usersById = new Map<string, Tables<'users'>>();
-  usersData.forEach((user) => usersById.set(user.id, user));
+  useEffect(() => {
+    loadPage(1)
+  }, [])
 
-  const messages: Imessage[] = (messagesData ?? []).map((message) => ({
-    ...message,
-    users: usersById.get(message.send_by) ?? null,
-  }));
+  const loadOlder = () => {
+    if (!hasMore || loadingOlder || loading) return
+    loadPage(page + 1, true)
+  }
+
+  if (!isAuth) {
+    return <div>Please log in</div>
+  }
 
   return (
-    <Suspense fallback={'loading...'}>
-      <MessagesList />
-      <InitMessages messages={messages} />
-    </Suspense>
-  );
+    <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
+      {error && <div className="shrink-0 p-4 text-red-600">{error}</div>}
+
+      <MessagesList
+        onLoadPrevious={loadOlder}
+        loadingPrevious={loadingOlder}
+        hasMorePrevious={hasMore}
+      />
+    </div>
+  )
 }
 
-export default ChatMessages;
+export default ChatMessages

@@ -81,7 +81,7 @@ const ChatInput = () => {
     }
 
     return (
-        <div className="m-5 mt-2 flex flex-col">
+        <div className="m-5 mt-2 shrink-0 flex flex-col">
             {isEditing && <div className="w-full border border-sky-800 bg-sky-950 h-8 px-4 pr-2 flex items-center justify-between text-sm rounded-md mb-2">
                 <div className="text-gray-400 truncate">
                     Editing: {actionMessage?.text}
