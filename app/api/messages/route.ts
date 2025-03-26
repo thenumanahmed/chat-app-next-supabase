@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { createServerSideClient } from '@/lib/supabase/server'
+import { createSupabaseServerObject } from '@/lib/supabase/server'
 import type { Tables } from '@/lib/database.types'
 
 export async function GET(req: Request) {
@@ -10,7 +10,7 @@ export async function GET(req: Request) {
   const start = (page - 1) * pageSize
   const end = page * pageSize - 1
 
-  const supabase = await createServerSideClient()
+  const supabase = await createSupabaseServerObject()
 
   const { data: user, error: authError } = await supabase.auth.getUser()
   if (authError || !user) {

@@ -14,7 +14,6 @@ export type Imessage = {
   } | null;
 };
 
-// Define types for state & actions
 interface MessageState {
   messages: Imessage[];
   actionMessage: Imessage | undefined;

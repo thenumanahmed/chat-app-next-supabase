@@ -4,6 +4,10 @@ import MessageMenu from "./MessageMenu";
 
 const Message = ({ message }: { message: any }) => {
     const user = useUser((state) => state.user);
+    const time = new Intl.DateTimeFormat(undefined, {
+        hour: 'numeric',
+        minute: '2-digit',
+    }).format(new Date(message.created_at));
 
     return (
         <div className="flex gap-2" >
@@ -21,14 +25,14 @@ const Message = ({ message }: { message: any }) => {
             {/* Message Content */}
             <div className="flex-1">
                 <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-1 min-w-0">
                         <h1 className="font-bold">{message.users?.display_name || 'Unknown User'}</h1>
-                        <h1 className="text-sm text-gray-400">
-                            {new Date(message.created_at).toDateString()}
-                        </h1>
                         {message.is_edit && <h1 className="text-sm text-gray-400">(edited)</h1>}
                     </div>
-                    {user?.id === message.users?.id && <MessageMenu message={message} />}
+                    <div className="flex items-center gap-2 shrink-0">
+                        <span className="text-xs text-gray-400">{time}</span>
+                        {user?.id === message.users?.id && <MessageMenu message={message} />}
+                    </div>
                 </div>
                 <p className="text-gray-300">{message.text}</p>
             </div>

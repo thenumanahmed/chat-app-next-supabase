@@ -1,4 +1,4 @@
-import { createServerSideClient } from "@/lib/supabase/server";
+import { createSupabaseServerObject } from "@/lib/supabase/server";
 
 import InitUser from "@/lib/store/initUser";
 import ChatHeader from "@/components/ChatHeader";
@@ -7,7 +7,7 @@ import ChatMessages from "@/components/ChatMessages";
 import AppIntro from "@/components/AppIntro";
 
 export default async function Home() {
-  const supabase = await createServerSideClient();
+  const supabase = await createSupabaseServerObject();
   const { data } = await supabase.auth.getUser();
 
   return (

@@ -4,7 +4,7 @@ import { Imessage, useMessages } from "@/lib/store/messages"
 import Message from "./Message";
 import { DeleteAlert } from "./MessageAction";
 import { createClient } from "@/lib/supabase/client";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { ArrowDown, Loader2 } from "lucide-react";
 
@@ -12,6 +12,55 @@ type MessagesListProps = {
     onLoadPrevious: () => void;
     loadingPrevious: boolean;
     hasMorePrevious: boolean;
+};
+
+const dateKey = (date: Date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+};
+
+const dateLabel = (date: Date) => {
+    const today = new Date();
+    const todayKey = dateKey(today);
+
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayKey = dateKey(yesterday);
+
+    const key = dateKey(date);
+    if (key === todayKey) return 'Today';
+    if (key === yesterdayKey) return 'Yesterday';
+
+    return new Intl.DateTimeFormat(undefined, {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+    }).format(date);
+};
+
+type RenderItem =
+    | { type: 'header'; key: string; label: string }
+    | { type: 'message'; message: Imessage };
+
+const buildRenderItems = (messages: Imessage[]): RenderItem[] => {
+    const items: RenderItem[] = [];
+    let lastDateKey: string | null = null;
+
+    for (const message of messages) {
+        const createdAt = new Date(message.created_at);
+        const key = dateKey(createdAt); // date key in format YYYY-MM-DD
+
+        if (key !== lastDateKey) {
+            items.push({ type: 'header', key, label: dateLabel(createdAt) });
+            lastDateKey = key;
+        }
+
+        items.push({ type: 'message', message });
+    }
+
+    return items;
 };
 
 const MessagesList = ({ onLoadPrevious, loadingPrevious, hasMorePrevious }: MessagesListProps) => {
@@ -23,7 +72,7 @@ const MessagesList = ({ onLoadPrevious, loadingPrevious, hasMorePrevious }: Mess
     const { messages, addMessage, optimisticDeleteMessage, optimisticEditMessage } =
         useMessages((state) => state);
 
-    const supabase = createClient();
+    const supabase = useMemo(() => createClient(), []);
 
     const loadingPreviousRef = useRef<boolean>(false);
     const previousScrollHeightRef = useRef<number>(0);
@@ -44,19 +93,53 @@ const MessagesList = ({ onLoadPrevious, loadingPrevious, hasMorePrevious }: Mess
         loadingPreviousRef.current = loadingPrevious;
     }, [loadingPrevious]);
 
+    const loadCurrentUser = useCallback(async () => {
+        const { data, error } = await supabase.auth.getUser();
+        if (error) {
+            console.error(error);
+            return;
+        }
+        setUser(data.user);
+    }, [supabase]);
+
     useEffect(() => {
-        const getUser = async () => {
-            const { data, error } = await supabase.auth.getUser();
+        loadCurrentUser();
+    }, [loadCurrentUser]);
 
-            if (error) {
-                console.error(error);
-                return;
-            }
-            setUser(data.user);
-        };
+    const fetchSenderProfile = useCallback(async (senderId: string) => {
+        const { error, data } = await supabase
+            .from('users')
+            .select('*')
+            .eq('id', senderId)
+            .single();
 
-        getUser();
-    }, []);
+        if (error) throw error;
+        return data;
+    }, [supabase]);
+
+    const handleInsert = useCallback(async (payload: any) => {
+        if (payload.new.send_by === user?.id) return;
+
+        try {
+            const userData = await fetchSenderProfile(payload.new.send_by);
+            const newMessage = {
+                ...payload.new,
+                users: userData,
+            };
+            addMessage(newMessage as Imessage);
+            setNotifications((prev) => prev + 1);
+        } catch (error: any) {
+            toast.error(error?.message ?? "Failed to load user");
+        }
+    }, [addMessage, fetchSenderProfile, user?.id]);
+
+    const handleDelete = useCallback((payload: any) => {
+        optimisticDeleteMessage(payload.old.id);
+    }, [optimisticDeleteMessage]);
+
+    const handleUpdate = useCallback((payload: any) => {
+        optimisticEditMessage(payload.new as Imessage);
+    }, [optimisticEditMessage]);
 
 
     useEffect(() => {
@@ -68,43 +151,23 @@ const MessagesList = ({ onLoadPrevious, loadingPrevious, hasMorePrevious }: Mess
                 event: 'INSERT',
                 schema: 'public',
                 table: 'messages'
-            }, async (payload) => {
-                if (payload.new.send_by === user?.id) {
-                    return;
-                }
-                const { error, data: userData } = await supabase.from('users')
-                    .select('*')
-                    .eq('id', payload.new.send_by)
-                    .single();
-
-                if (error) {
-                    toast.error(error.message);
-                } else {
-                    const newMessage = {
-                        ...payload.new,
-                        users: userData,
-                    };
-                    addMessage(newMessage as Imessage);
-                }
-                setNotifications((prev) => prev + 1);
-            }).on('postgres_changes', {
+            }, handleInsert)
+            .on('postgres_changes', {
                 event: 'DELETE',
                 schema: 'public',
                 table: 'messages'
-            }, async (payload) => {
-                optimisticDeleteMessage(payload.old.id);
-            }).on('postgres_changes', {
+            }, handleDelete)
+            .on('postgres_changes', {
                 event: 'UPDATE',
                 schema: 'public',
                 table: 'messages'
-            }, async (payload) => {
-                optimisticEditMessage(payload.new as Imessage);
-            }).subscribe();
+            }, handleUpdate)
+            .subscribe();
 
         return () => {
             channel.unsubscribe();
         }
-    }, [user]);
+    }, [handleDelete, handleInsert, handleUpdate, supabase, user]);
 
     // for scrolling to bottom on new message
     useEffect(() => {
@@ -140,6 +203,8 @@ const MessagesList = ({ onLoadPrevious, loadingPrevious, hasMorePrevious }: Mess
         }
     };
 
+    const items = useMemo(() => buildRenderItems(messages), [messages]);
+
     return (
         <div className="relative flex-1 min-h-0 overflow-hidden flex flex-col">
             {loadingPrevious && (
@@ -149,8 +214,17 @@ const MessagesList = ({ onLoadPrevious, loadingPrevious, hasMorePrevious }: Mess
             )}
             <div className="flex-1 overflow-y-auto overflow-x-hidden p-5 flex flex-col" ref={scrollRef} onScroll={handleOnScroll}>
                 <div className="space-y-7">
-                    {messages.map((message) => {
-                        return <Message key={message.id} message={message} />
+                    {items.map((item) => {
+                        if (item.type === 'header') {
+                            return (
+                                <div key={`date-${item.key}`} className="flex justify-center">
+                                    <div className="text-xs text-gray-300 bg-gray-900/60 border border-gray-800 px-3 py-1 rounded-full">
+                                        {item.label}
+                                    </div>
+                                </div>
+                            );
+                        }
+                        return <Message key={item.message.id} message={item.message} />;
                     })}
                 </div>
             </div>
@@ -172,4 +246,4 @@ const MessagesList = ({ onLoadPrevious, loadingPrevious, hasMorePrevious }: Mess
     )
 }
 
-export default MessagesList 
+export default MessagesList;

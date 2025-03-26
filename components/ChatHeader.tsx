@@ -93,7 +93,7 @@ const ChatHeader = ({ user }: { user: User | undefined }) => {
             {/* DROPDOWN */}
             <div className="absolute right-0 mt-2 w-20 border rounded-lg shadow-lg 
                   opacity-0 invisible group-hover:opacity-100 group-hover:visible 
-                  transition-all duration-200">
+              transition-all duration-200">
               <button
                 onClick={handleLogout}
                 className="w-full text-left px-4 py-2 hover:bg-gray-900"
@@ -104,7 +104,8 @@ const ChatHeader = ({ user }: { user: User | undefined }) => {
 
           </div>
         ) : (
-          <button onClick={handleLoginWithGithub}>
+          <button className='hover:bg-gray-900 border border-gray-700 rounded-md px-4 py-1'
+            onClick={handleLoginWithGithub}>
             Login
           </button>
         )}

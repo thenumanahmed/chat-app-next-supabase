@@ -8,14 +8,12 @@ const PAGE_SIZE = 20
 
 const ChatMessages = () => {
   const [page, setPage] = useState(1)
-  const [totalCount, setTotalCount] = useState(0)
   const [loading, setLoading] = useState(false)
   const [loadingOlder, setLoadingOlder] = useState(false)
   const [hasMore, setHasMore] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [isAuth, setIsAuth] = useState(true)
 
-  const messages = useMessages((state) => state.messages)
 
   const loadPage = async (pageToLoad: number, isOlderPage = false) => {
     if (loading || loadingOlder) return
@@ -64,7 +62,6 @@ const ChatMessages = () => {
     }
 
     setPage(pageToLoad)
-    setTotalCount(body.totalCount ?? 0)
     setHasMore(fetchedMessages.length === PAGE_SIZE)
 
     setLoading(false)
