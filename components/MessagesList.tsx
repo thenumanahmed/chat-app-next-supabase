@@ -3,9 +3,7 @@
 import { Imessage, useMessages } from "@/lib/store/messages"
 import Message from "./Message";
 import { DeleteAlert } from "./MessageAction";
-import { createClient } from "@/lib/supabase/client";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { toast } from "sonner";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowDown, Loader2 } from "lucide-react";
 
 type MessagesListProps = {
@@ -67,12 +65,9 @@ const MessagesList = ({ onLoadPrevious, loadingPrevious, hasMorePrevious }: Mess
     const scrollRef = useRef<HTMLDivElement>(null);
     const [userScrolled, setUserScrolled] = useState(false);
     const [notifications, setNotifications] = useState(0);
-    const [user, setUser] = useState<any>(null);
+    const lastMessageIdRef = useRef<number | null>(null);
 
-    const { messages, addMessage, optimisticDeleteMessage, optimisticEditMessage } =
-        useMessages((state) => state);
-
-    const supabase = useMemo(() => createClient(), []);
+    const messages = useMessages((state) => state.messages);
 
     const loadingPreviousRef = useRef<boolean>(false);
     const previousScrollHeightRef = useRef<number>(0);
@@ -93,81 +88,15 @@ const MessagesList = ({ onLoadPrevious, loadingPrevious, hasMorePrevious }: Mess
         loadingPreviousRef.current = loadingPrevious;
     }, [loadingPrevious]);
 
-    const loadCurrentUser = useCallback(async () => {
-        const { data, error } = await supabase.auth.getUser();
-        if (error) {
-            console.error(error);
-            return;
-        }
-        setUser(data.user);
-    }, [supabase]);
-
     useEffect(() => {
-        loadCurrentUser();
-    }, [loadCurrentUser]);
+        const latestId = messages.length ? messages[messages.length - 1]?.id : null;
+        const isNewMessage = latestId && latestId !== lastMessageIdRef.current;
+        lastMessageIdRef.current = latestId;
 
-    const fetchSenderProfile = useCallback(async (senderId: string) => {
-        const { error, data } = await supabase
-            .from('users')
-            .select('*')
-            .eq('id', senderId)
-            .single();
-
-        if (error) throw error;
-        return data;
-    }, [supabase]);
-
-    const handleInsert = useCallback(async (payload: any) => {
-        if (payload.new.send_by === user?.id) return;
-
-        try {
-            const userData = await fetchSenderProfile(payload.new.send_by);
-            const newMessage = {
-                ...payload.new,
-                users: userData,
-            };
-            addMessage(newMessage as Imessage);
+        if (isNewMessage && userScrolled && !loadingPrevious) {
             setNotifications((prev) => prev + 1);
-        } catch (error: any) {
-            toast.error(error?.message ?? "Failed to load user");
         }
-    }, [addMessage, fetchSenderProfile, user?.id]);
-
-    const handleDelete = useCallback((payload: any) => {
-        optimisticDeleteMessage(payload.old.id);
-    }, [optimisticDeleteMessage]);
-
-    const handleUpdate = useCallback((payload: any) => {
-        optimisticEditMessage(payload.new as Imessage);
-    }, [optimisticEditMessage]);
-
-
-    useEffect(() => {
-        if (!user) return; // only subscribe to channel when user is loaded
-
-        const channel = supabase
-            .channel('general_chat_channel')
-            .on('postgres_changes', {
-                event: 'INSERT',
-                schema: 'public',
-                table: 'messages'
-            }, handleInsert)
-            .on('postgres_changes', {
-                event: 'DELETE',
-                schema: 'public',
-                table: 'messages'
-            }, handleDelete)
-            .on('postgres_changes', {
-                event: 'UPDATE',
-                schema: 'public',
-                table: 'messages'
-            }, handleUpdate)
-            .subscribe();
-
-        return () => {
-            channel.unsubscribe();
-        }
-    }, [handleDelete, handleInsert, handleUpdate, supabase, user]);
+    }, [messages, userScrolled, loadingPrevious]);
 
     // for scrolling to bottom on new message
     useEffect(() => {

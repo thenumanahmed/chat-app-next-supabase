@@ -8,8 +8,10 @@ import { Imessage, useMessages } from "@/lib/store/messages";
 import { X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { ConfirmDialog } from "./ConfirmationDialog";
+import { sendMessage } from "@/lib/chat/sendMessage";
+import type React from "react";
 
-const ChatInput = () => {
+const ChatInput = ({ roomId }: { roomId: string }) => {
     const supabase = createClient();
     const inputRef = useRef<HTMLInputElement>(null);
     const [inputValue, setInputValue] = useState('');
@@ -18,6 +20,12 @@ const ChatInput = () => {
     const { addMessage, actionMessage, actionType, setAction, optimisticEditMessage, optimisticDeleteMessage } = useMessages();
 
     const isEditing = actionType === 'edit';
+
+    useEffect(() => {
+        setInputValue('');
+        setShowDeleteConfirmation(false);
+        setAction(undefined, null);
+    }, [roomId, setAction]);
 
     useEffect(() => {
         if (isEditing && actionMessage) {
@@ -62,23 +70,45 @@ const ChatInput = () => {
     };
 
     const handleSendMessage = async (text: string) => {
-        const newMessage = {
-            id: crypto.getRandomValues(new Uint32Array(1))[0],// big int
-            text,
-            send_by: user?.id,
-            is_edit: false,
-            created_at: new Date().toISOString(),
-            users: {
-                id: user?.id,
-                display_name: user?.user_metadata.user_name,
-                avatar_url: user?.user_metadata.avatar_url,
-                created_at: user?.created_at
-            }
+        if (!user?.id) {
+            toast.error("You must be logged in to send messages");
+            return;
         }
-        addMessage(newMessage as Imessage);
-        const { error } = await supabase.from('messages').insert({ text });
-        if (error) {
-            toast.error(error.message)
+        if (!roomId) return;
+
+        const createdAt = new Date().toISOString();
+        const tempId = -Date.now();
+
+        const newMessage: Imessage = {
+            id: tempId,
+            text,
+            send_by: user.id,
+            room_id: roomId,
+            is_edit: false,
+            created_at: createdAt,
+            users: {
+                id: user.id,
+                display_name: user.user_metadata?.user_name ?? user.user_metadata?.full_name ?? user.email ?? 'You',
+                avatar_url: user.user_metadata?.avatar_url ?? '',
+                created_at: user.created_at,
+            }
+        };
+
+        addMessage(newMessage);
+
+        try {
+            const data = await sendMessage(supabase, {
+                text,
+                userId: user.id,
+                roomId,
+            });
+
+            optimisticDeleteMessage(tempId);
+            addMessage({ ...data, users: newMessage.users });
+        } catch (err: unknown) {
+            const message = err instanceof Error ? err.message : "Failed to send message";
+            toast.error(message);
+            optimisticDeleteMessage(tempId);
         }
     }
     const handleDeleteMessage = async () => {
@@ -118,10 +148,10 @@ const ChatInput = () => {
             <Input
                 ref={inputRef}
                 value={inputValue}
-                onChange={(e: any) => setInputValue(e.target.value)}
-                placeholder="send message" onKeyDown={(e: any) => {
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setInputValue(e.target.value)}
+                placeholder="send message" onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
                     if (e.key === "Enter") {
-                        const value = e.currentTarget.value as string;
+                        const value = e.currentTarget.value;
 
                         if (isEditing && !value.trim()) {
                             e.preventDefault();
@@ -135,7 +165,6 @@ const ChatInput = () => {
                             } else {
                                 handleSendMessage(value);
                             }
-                            e.currentTarget.value = '';
                             setInputValue('');
                         }
                     } else if (isEditing && (e.key === "Escape" || e.key === "Esc")) {

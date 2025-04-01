@@ -4,11 +4,16 @@ import type { Tables } from '@/lib/database.types'
 
 export async function GET(req: Request) {
   const url = new URL(req.url)
+  const roomId = url.searchParams.get('roomId')
   const page = Math.max(Number(url.searchParams.get('page') ?? '1'), 1)
   const pageSize = Math.max(Number(url.searchParams.get('pageSize') ?? '20'), 1)
   const direction = url.searchParams.get('direction') === 'desc' ? 'desc' : 'asc'
   const start = (page - 1) * pageSize
   const end = page * pageSize - 1
+
+  if (!roomId) {
+    return NextResponse.json({ error: 'roomId is required' }, { status: 400 })
+  }
 
   const supabase = await createSupabaseServerObject()
 
@@ -21,6 +26,7 @@ export async function GET(req: Request) {
   const { data: messagesData, count, error: messagesError } = await supabase
     .from('messages')
     .select('*', { count: 'exact' })
+    .eq('room_id', roomId)
     .order('created_at', { ascending })
     .range(start, end)
 

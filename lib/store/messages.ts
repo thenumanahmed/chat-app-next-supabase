@@ -1,17 +1,11 @@
 import { create } from 'zustand'
+import type { Tables } from '@/lib/database.types'
 
-export type Imessage = {
-  id: number;
-  created_at: string;
-  is_edit: boolean;
-  send_by: string;
-  text: string;
-  users: {
-    avatar_url: string;
-    created_at: string;
-    display_name: string;
-    id: string;
-  } | null;
+export type MessageRow = Tables<'messages'>;
+export type UserRow = Tables<'users'>;
+
+export type Imessage = MessageRow & {
+  users: Pick<UserRow, 'avatar_url' | 'created_at' | 'display_name' | 'id'> | null;
 };
 
 interface MessageState {
@@ -24,7 +18,7 @@ interface MessageState {
   addMessage: (message: Imessage) => void;
   prependMessages: (messages: Imessage[]) => void;
   setMessages: (messages: Imessage[]) => void;
-  optimisticEditMessage: (message: Imessage) => void;
+  optimisticEditMessage: (message: Partial<Imessage> & Pick<Imessage, 'id'>) => void;
   optimisticDeleteMessage: (messageId: number) => void;
 }
 

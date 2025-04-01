@@ -38,7 +38,7 @@ export const DeleteAlert = () => {
 
         optimisticDeleteMessage(actionMessage.id);
 
-        const { data, error } = await supabase.from('messages').delete().eq('id', actionMessage?.id);
+        const { error } = await supabase.from('messages').delete().eq('id', actionMessage.id);
         if (error) {
             toast.error(error.message);
             return;

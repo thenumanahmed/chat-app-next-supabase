@@ -1,8 +1,9 @@
 import Image from "next/image";
 import { useUser } from "@/lib/store/user";
 import MessageMenu from "./MessageMenu";
+import type { Imessage } from "@/lib/store/messages";
 
-const Message = ({ message }: { message: any }) => {
+const Message = ({ message }: { message: Imessage }) => {
     const user = useUser((state) => state.user);
     const time = new Intl.DateTimeFormat(undefined, {
         hour: 'numeric',
@@ -14,12 +15,16 @@ const Message = ({ message }: { message: any }) => {
             {/* User Avatar */}
             {/* <div className="h-10 w-10 bg-green-500 rounded-full"></div> */}
             <div>
-                <Image
-                    src={message.users?.avatar_url}
-                    alt={message.users?.display_name || 'Unknown User'}
-                    width={40} height={40}
-                    className="rounded-full ring-2"
-                />
+                {message.users?.avatar_url ? (
+                    <Image
+                        src={message.users.avatar_url}
+                        alt={message.users?.display_name || 'Unknown User'}
+                        width={40} height={40}
+                        className="rounded-full ring-2"
+                    />
+                ) : (
+                    <div className="h-10 w-10 rounded-full ring-2 bg-gray-800" />
+                )}
             </div>
 
             {/* Message Content */}
@@ -31,7 +36,7 @@ const Message = ({ message }: { message: any }) => {
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
                         <span className="text-xs text-gray-400">{time}</span>
-                        {user?.id === message.users?.id && <MessageMenu message={message} />}
+                        {user?.id === message.send_by && <MessageMenu message={message} />}
                     </div>
                 </div>
                 <p className="text-gray-300">{message.text}</p>
