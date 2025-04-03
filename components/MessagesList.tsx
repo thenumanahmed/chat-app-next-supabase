@@ -147,7 +147,7 @@ const MessagesList = ({ onLoadPrevious, loadingPrevious, hasMorePrevious }: Mess
                         if (item.type === 'header') {
                             return (
                                 <div key={`date-${item.key}`} className="flex justify-center">
-                                    <div className="text-xs text-gray-300 bg-gray-900/60 border border-gray-800 px-3 py-1 rounded-full">
+                                    <div className="text-xs text-muted-foreground bg-muted/50 border border-border px-3 py-1 rounded-full">
                                         {item.label}
                                     </div>
                                 </div>

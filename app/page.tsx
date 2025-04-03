@@ -16,17 +16,17 @@ export default async function Home() {
           <ChatHeader user={data.user ? data.user : undefined} />
 
           {data.user ? (
-            <div className="flex-1 min-h-0 flex flex-col">
-              <div className="flex-1 flex items-center justify-center flex-col text-center px-6">
+            <div className="flex-1 min-h-0 flex items-center justify-center flex-col text-center px-6">
+              <div className="w-full max-w-xl">
                 <h1 className="text-3xl font-bold bg-linear-to-r from-blue-500 to-red-500 bg-clip-text text-transparent">
                   Daily Chat
                 </h1>
-                <p className="mt-2 text-gray-400 max-w-lg">
+                <p className="mt-2 text-muted-foreground">
                   Jump into the global room, or create a shareable room link you can send to anyone
                   with an account.
                 </p>
+                <HomeLandingActions className="mt-6" />
               </div>
-              <HomeLandingActions />
             </div>
           ) : (
             <AppIntro />

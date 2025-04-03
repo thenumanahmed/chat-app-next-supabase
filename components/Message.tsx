@@ -23,7 +23,7 @@ const Message = ({ message }: { message: Imessage }) => {
                         className="rounded-full ring-2"
                     />
                 ) : (
-                    <div className="h-10 w-10 rounded-full ring-2 bg-gray-800" />
+                    <div className="h-10 w-10 rounded-full ring-2 ring-border bg-muted" />
                 )}
             </div>
 
@@ -32,14 +32,14 @@ const Message = ({ message }: { message: Imessage }) => {
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-1 min-w-0">
                         <h1 className="font-bold">{message.users?.display_name || 'Unknown User'}</h1>
-                        {message.is_edit && <h1 className="text-sm text-gray-400">(edited)</h1>}
+                        {message.is_edit && <h1 className="text-sm text-muted-foreground">(edited)</h1>}
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
-                        <span className="text-xs text-gray-400">{time}</span>
+                        <span className="text-xs text-muted-foreground">{time}</span>
                         {user?.id === message.send_by && <MessageMenu message={message} />}
                     </div>
                 </div>
-                <p className="text-gray-300">{message.text}</p>
+                <p className="text-sm leading-relaxed">{message.text}</p>
             </div>
         </div>
     )

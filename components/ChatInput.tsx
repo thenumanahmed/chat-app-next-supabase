@@ -135,15 +135,18 @@ const ChatInput = ({ roomId }: { roomId: string }) => {
 
     return (
         <div className="m-5 mt-2 shrink-0 flex flex-col">
-            {isEditing && <div className="w-full border border-sky-800 bg-sky-950 h-8 px-4 pr-2 flex items-center justify-between text-sm rounded-md mb-2">
-                <div className="text-gray-400 truncate">
+            {isEditing && <div className="w-full border border-border bg-muted h-8 px-4 pr-2 flex items-center justify-between text-sm rounded-md mb-2">
+                <div className="text-muted-foreground truncate">
                     Editing: {actionMessage?.text}
                 </div>
-                <X onClick={() => {
-                    setShowDeleteConfirmation(false);
-                    setAction(undefined, null);
-                    setInputValue('');
-                }} />
+                <X
+                    className="h-4 w-4 cursor-pointer text-muted-foreground hover:text-foreground"
+                    onClick={() => {
+                        setShowDeleteConfirmation(false);
+                        setAction(undefined, null);
+                        setInputValue('');
+                    }}
+                />
             </div>}
             <Input
                 ref={inputRef}

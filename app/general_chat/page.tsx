@@ -4,7 +4,6 @@ import ChatHeader from "@/components/ChatHeader";
 import ChatInput from "@/components/ChatInput";
 import ChatMessages from "@/components/ChatMessages";
 import AppIntro from "@/components/AppIntro";
-import CreateRoomButton from "@/components/CreateRoomButton";
 import { GENERAL_ROOM_ID } from "@/lib/chat/constants";
 
 export default async function GeneralChatPage() {
@@ -18,9 +17,6 @@ export default async function GeneralChatPage() {
           <ChatHeader user={data.user ? data.user : undefined} roomId={GENERAL_ROOM_ID} />
           {data.user ? (
             <>
-              <div className="shrink-0 px-5 py-3 border-b flex items-center justify-end">
-                <CreateRoomButton />
-              </div>
               <ChatMessages roomId={GENERAL_ROOM_ID} />
               <ChatInput roomId={GENERAL_ROOM_ID} />
             </>
@@ -33,4 +29,3 @@ export default async function GeneralChatPage() {
     </>
   );
 }
-

@@ -8,8 +8,9 @@ import { Input } from '@/components/ui/input'
 import { GENERAL_ROOM_ID } from '@/lib/chat/constants'
 import { isValidUuid } from '@/lib/chat/uuid'
 import CreateRoomButton from '@/components/CreateRoomButton'
+import { cn } from '@/lib/utils'
 
-export default function HomeLandingActions() {
+export default function HomeLandingActions({ className }: { className?: string }) {
   const router = useRouter()
   const [roomId, setRoomId] = useState('')
 
@@ -34,19 +35,19 @@ export default function HomeLandingActions() {
   }
 
   return (
-    <div className="shrink-0 px-6 py-6 border-t flex flex-col gap-3">
-      <div className="flex flex-col sm:flex-row gap-2">
+    <div className={cn("flex flex-col gap-3", className)}>
+      <div className="flex flex-col sm:flex-row gap-2 justify-center">
         <Button variant="outline" onClick={() => router.push('/general_chat')}>
           Join General Chat
         </Button>
         <CreateRoomButton />
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-2">
+      <div className="self-center max-w-sm">
         <Input
           value={roomId}
           onChange={(e) => setRoomId(e.target.value)}
-          placeholder="Paste room UUID (e.g. 2f1c...)"
+          placeholder="Enter meeting code / room id (UUID)"
           onKeyDown={(e) => {
             if (e.key === 'Enter') {
               e.preventDefault()
@@ -54,11 +55,10 @@ export default function HomeLandingActions() {
             }
           }}
         />
-        <Button onClick={joinRoom} disabled={!canJoin}>
+        <Button onClick={joinRoom} disabled={!canJoin} className="w-full mt-2">
           Join Room
         </Button>
       </div>
     </div>
   )
 }
-

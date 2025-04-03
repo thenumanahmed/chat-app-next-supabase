@@ -4,7 +4,6 @@ import ChatHeader from "@/components/ChatHeader";
 import ChatInput from "@/components/ChatInput";
 import ChatMessages from "@/components/ChatMessages";
 import AppIntro from "@/components/AppIntro";
-import CreateRoomButton from "@/components/CreateRoomButton";
 import { isValidUuid } from "@/lib/chat/uuid";
 import { GENERAL_ROOM_ID } from "@/lib/chat/constants";
 import { redirect } from "next/navigation";
@@ -32,14 +31,11 @@ export default async function DynamicChatPage({
           {data.user ? (
             validRoomId ? (
               <>
-                <div className="shrink-0 px-5 py-3 border-b flex items-center justify-end">
-                  <CreateRoomButton />
-                </div>
                 <ChatMessages roomId={roomId} />
                 <ChatInput roomId={roomId} />
               </>
             ) : (
-              <div className="flex-1 flex items-center justify-center text-sm text-gray-400 px-6 text-center">
+              <div className="flex-1 flex items-center justify-center text-sm text-muted-foreground px-6 text-center">
                 Invalid room id. Check the URL and try again.
               </div>
             )
