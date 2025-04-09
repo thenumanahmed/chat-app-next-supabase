@@ -52,7 +52,26 @@ A modern, fast, and responsive real-time chat application built with Next.js, Su
    NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
    ```
 
-4. **Run the development server:**
+4. **Apply database migrations (Supabase CLI):**
+
+   This repo keeps Supabase migrations in `supabase/migrations/`. The Supabase CLI is included as a dev dependency, so you can run it via `npx`.
+
+   **Apply migrations to your hosted Supabase project (recommended):**
+   ```bash
+   npx supabase login
+   npx supabase link --project-ref <your-project-ref>
+   npx supabase db push
+   ```
+   Note: `supabase link` will prompt for your database password (Supabase dashboard → **Project Settings** → **Database**).
+
+   **Apply migrations to a local Supabase instance (optional, requires Docker):**
+   ```bash
+   npx supabase start
+   npx supabase db reset
+   ```
+   Note: `db reset` recreates the local database (it will wipe local data).
+
+5. **Run the development server:**
    ```bash
    npm run dev
    ```
